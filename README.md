@@ -23,7 +23,7 @@ January-March 2020:
         - Scipy Library
     Free Time:
         - Blender modeling
-        - Pygame library
+        - Tkinter library
 
 March-June 2020:
     Learn and master Tensorflow...
