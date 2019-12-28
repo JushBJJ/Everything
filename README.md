@@ -8,6 +8,7 @@ https://www.kdnuggets.com/2019/11/10-free-must-read-books-ai.html
 https://gym.openai.com/docs/
 https://tensorflow.org
 https://keras.io
+https://github.com/JeffPaine/beautiful_idiomatic_python
 
 January-March 2020:
     Learn and master python...
