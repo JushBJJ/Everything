@@ -12,11 +12,11 @@ https://github.com/JeffPaine/beautiful_idiomatic_python
 
 January-March 2020:
     Learn and master python...
-        - IO (Input and Output)
-        - Loops
+        - IO (Input and Output) [DONE]
+        - Loops [DONE]
         - Exceptions
-        - Functions
-        - Classes
+        - Functions [DONE]
+        - Classes [DONE]
         - Numpy Library
         - Panda Library
         - Matplotlib library
