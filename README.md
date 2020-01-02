@@ -14,7 +14,7 @@ January-March 2020:
     Learn and master python...
         - IO (Input and Output) [DONE]
         - Loops [DONE]
-        - Exceptions
+        - Exceptions [DONE]
         - Functions [DONE]
         - Classes [DONE]
         - Numpy Library
