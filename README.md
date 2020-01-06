@@ -17,7 +17,7 @@ January-March 2020:
         - Exceptions [DONE]
         - Functions [DONE]
         - Classes [DONE]
-        - Numpy Library
+        - Numpy Library [DONE]
         - Panda Library
         - Matplotlib library
         - Random Library
