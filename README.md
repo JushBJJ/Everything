@@ -17,11 +17,11 @@ January-March 2020:
         - Exceptions [DONE]
         - Functions [DONE]
         - Classes [DONE]
-        - Numpy Library
-        - Panda Library
-        - Matplotlib library
-        - Random Library
-        - Scipy Library
+        - Numpy Library [DONE]
+        - Panda Library 
+        - Matplotlib library [REMOVED]
+        - Random Library [REMOVED]
+        - Scipy Library [REMOVED]
     Free Time:
         - Blender modeling
         - Tkinter library
