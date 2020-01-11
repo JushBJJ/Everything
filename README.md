@@ -27,7 +27,7 @@ January-March 2020:
         - Box2D Library and/or Pymunk Library
 
 March-June 2020:
-    Learn and master Tensorflow...
+    Learn and master Pytorch...
         -- Simple Models
         -- Image Processing
         -- Image Recognition
@@ -35,11 +35,11 @@ March-June 2020:
             - Letter Recognition
             - Road Sign recognition
         -- Text Processing
-        -- Keras library
+        -- Keras library ????
         -- Reinforcement learning policy equations
         -- Reinforcement learning reward equations
         -- OpenAI's gym
-        -- Learn how to combine OpenAI's gym with tensorflow
+        -- Learn how to combine OpenAI's gym with Pytorch
         -- Combine image recognition with reinforcement learning (Atari, 2D body movement)
 
 June-September 2020:
