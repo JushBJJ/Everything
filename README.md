@@ -32,6 +32,7 @@ January-March 2020:
 March-June 2020:
     Learn and master Pytorch...
     	-- Learning the main concept of AI and how different types of neural networks work
+		- Visualised concept of perception, feedforward, Conv2D
 		- Vectors
 			- definition
 			- scalar
