@@ -9,6 +9,8 @@ https://gym.openai.com/docs/
 https://tensorflow.org
 https://keras.io
 https://github.com/JeffPaine/beautiful_idiomatic_python
+https://pytorch.org/docs
+https://towardsdatascience.com/mathematics-for-ai-all-the-essential-math-topics-you-need-ed1d9c910baf
 
 January-March 2020:
     Learn and master python...
@@ -22,7 +24,6 @@ January-March 2020:
         - Matplotlib library [REMOVED]
         - Random Library [REMOVED]
         - Scipy Library [REMOVED]
-    	- Learning the main concept of AI and how different types of neural networks work
 	- Learning the mathematics of AI's activation functions, Loss, Backpropagating, etc
      Free Time:
         - Blender modeling
@@ -30,6 +31,53 @@ January-March 2020:
 
 March-June 2020:
     Learn and master Pytorch...
+    	-- Learning the main concept of AI and how different types of neural networks work
+		- Vectors
+			- definition
+			- scalar
+			- addition
+			- scalar multiplication
+			- inner product(dot product)
+			- vector projection
+			- cosine similarity
+			- orthogonal vectors
+			- normal and orthonormal vectors
+			- vector norm, vector space
+			- linear combination
+			- linear span
+			- linear independence
+			- basis vectors
+		- Matrices
+			- definition
+			- addition
+			- transpose
+			- scalar multiplication
+			- matrix multiplication
+			- matrix multiplication properties
+			- hadamard product, functions
+			- linear transformation
+			- determinant
+			- identity matrix
+			- invertible matrix and inverse
+			- rank
+			- trace
+			- popular type of matrices- symmetric, diagonal, orthogonal, orthonormal, positive definite matrix
+		- Eigenvalues & eigenvectors
+			- concept
+			- intuition
+			- significance
+			- how to find
+		- Principle component analysis
+			- concept
+			- properties
+			- applications
+		- Singular value decomposition
+			- concept
+			- properties
+			- applications
+		- Calculus
+		- Probability
+
         -- Simple Models [DONE]
         -- Image Processing
         -- Image Recognition
