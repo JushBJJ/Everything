@@ -22,13 +22,15 @@ January-March 2020:
         - Matplotlib library [REMOVED]
         - Random Library [REMOVED]
         - Scipy Library [REMOVED]
-    Free Time:
+    	- Learning the main concept of AI and how different types of neural networks work
+	- Learning the mathematics of AI's activation functions, Loss, Backpropagating, etc
+     Free Time:
         - Blender modeling
         - Box2D Library and/or Pymunk Library
 
 March-June 2020:
     Learn and master Pytorch...
-        -- Simple Models
+        -- Simple Models [DONE]
         -- Image Processing
         -- Image Recognition
             - Number Recognition

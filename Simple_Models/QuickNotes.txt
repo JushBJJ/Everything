@@ -1,0 +1,79 @@
+torch.nn provides a module for making neural networks using classes.
+
+`torch.nn.Linear` arguments:
+	in_features: size of each input sample
+	out_features: size of each output sample
+	bias: bias, default: True
+
+
+example of a simple neural network (perception) class:
+
+###############################
+import torch.nn as NN
+class Net(NN.Module):
+	def __init__(self):
+		super(Net, self).__init__()
+		self.input=NN.Linear(3,3)
+		self.output=NN.ReLU()
+	
+	def forward(self, x):
+		output=self.input(x)
+		output=self.output(x)
+		return output
+
+
+##############################
+
+example of a simple neural network (feedforward) class:
+
+##############################
+# Sequence:
+#	- Layer 1 (Linear, Input)
+#	- Layer 2 (Rectified Linear)
+# 	- Layer 3 (Rectified Lienar)
+# 	- Layer 4 (Softmax, Output)
+# 3 input nodes and 2 output nodes (random numbers that I came up)
+##############################
+
+# Lines explained at QuickNotes.txt at line 37
+
+import torch
+import torch.nn as nn
+
+class FFN(nn.Module):
+    def __init__(self):
+        super(FFN, self).__init__()
+
+	# Layer 1-4
+        self.l1=nn.Linear(3,6) # 3 Nodes
+        self.l2=nn.Linear(6,3) # 6 nodes
+        self.l3=nn.Linear(3,2) # 3 nodes outputting 2 nodes
+        self.l4=nn.Softmax() # Last Layer...or last function to use on layer 3
+        
+	# Activation
+	self.Activation=nn.ReLU()
+
+    def forward(self, x):
+        # Layer 1 Sequence
+        seq=self.l1(x)
+        seq=self.Activation(seq)
+        seq=self.l2(seq)
+        seq=self.Activation(seq)
+        seq=self.l3(seq)
+
+        # Change shape to [x, 1]
+        seq.view(x.shape[0],2)
+
+        seq=self.l4(seq)
+
+        return seq
+    
+# Sample
+x=torch.Tensor([[0,0,1],[1,1,1],[1,0,0], [0,1,0],[1,0,1]])
+
+# Network
+Net=FFN()
+out=Net.forward(x)
+print(out)
+
+##############################
