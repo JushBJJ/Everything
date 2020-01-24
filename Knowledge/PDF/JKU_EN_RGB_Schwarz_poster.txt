@@ -1,0 +1,136 @@
+ELU-Networks:
+Fast and Accurate CNN Learning on ImageNet
+Martin Heusel, Djork-Arné Clevert, Günter Klambauer, Andreas Mayr,
+Karin Schwarzbauer, Thomas Unterthiner, and Sepp Hochreiter
+Abstract:
+
+We trained a CNN on the ImageNet dataset with a new
+activation function, called "exponential linear unit" (ELU) [1], to speed up
+learning.
+Like rectified linear units (ReLUs) [2,3], leaky ReLUs (LReLUs) and parametrized
+ReLUs (PReLUs), ELUs also avoid a vanishing gradient via the identity for
+positive values. However ELUs have improved learning characteristics compared
+to the other activation functions. In contrast to ReLUs, ELUs have negative
+values which allows them to push mean unit activations closer to zero. Zero
+means speed up learning because they bring the gradient closer to the unit
+natural gradient. Like batch normalization, ELUs push the mean towards zero,
+but with a significantly smaller computational footprint. While other activation
+functions like LReLUs and PReLUs also have negative values, they do not ensure
+a noise-robust deactivation state. ELUs saturate to a negative value with
+smaller inputs and thereby decrease the propagated variation and information.
+Therefore ELUs code the degree of presence of particular phenomena in the
+input, while they do not quantitatively model the degree of their absence.
+Consequently dependencies between ELU units are much easier to model and
+distinct concepts are less likely to interfere.
+In the ImageNet challenge ELU networks considerably speed up learning
+compared to a ReLU network with similar classification performance (top 5 error
+below 10%).
+
+Goal
+
+Solution
+
+- speed up learning in deep networks
+- avoid bias shift (see below)
+- bring gradient closer to naural gradient
+
+- exponential linear units (ELUs)
+- negative part serves as bias
+- smaller mean → smaller bias shift
+
+ELUs tested on CIFAR-10 and CIFAR-100
+Network
+AlexNet
+DSN
+NiN
+Maxout
+All-CNN
+Highway Network
+Fract Max-Pooling
+ELU-Network
+
+CIFAR-10
+18.04
+7.94
+8.81
+9.38
+7.25
+7.60
+4.50
+6.55
+
+CIFAR-100
+45.80
+34.57
+35.68
+38.57
+33.71
+32.24
+27.62
+24.28
+
+augmented
+√
+√
+√
+√
+√
+√
+-
+
+Test error in %. Comparison of ELU networks and other convolutional networks on
+CIFAR-10 and CIFAR-100. Reported is the test error in percent misclassification. Best
+results are in bold red, second best bold black.
+
+ELUs tested on ImageNet
+15 layer CNN with stacks of (1×96×6, 3×512×3, 5×768×3, 3×1024×3, 2×4096×FC,
+1×1000×FC) layers×units×receptive fields or fully-connected (FC). 2×2 max-pooling
+with a stride of 2 after each stack, spatial pyramid pooling with 3 levels before the
+first FC layer.
+L2-weight decay: 0.0005; 50% drop-out in FC layers; images resized to 256×256,
+subtracted per-pixel mean, training on 224 × 224 random crops with vertical
+flipping. No augmentation; single-model; single center crop.
+
+ELUs tested on MNIST
+ELU networks evaluated at MNIST: mean activation and test/training loss. Average
+over five runs with different random initializations, error bars show standard
+deviation.
+
+ELUs used for the ImageNet classification task. The x-axis gives the number of
+iterations. The y-axis shows the training loss (left), top-5 error (middle) and the top1 error (right) of 5,000 random validation samples, evaluated on the center crop.
+Both activation functions ELU (purple) and ReLU (blue) lead for convergence, but
+ELUs start reducing the error earlier and reach the 20% top-5 error after 160k
+iterations, while ReLUs need 200k iterations to reach the same error rate.
+We submitted to ILSVRC 2015 achieving 9.18% test classification error rate.
+
+Bias Shift and Unit Natural Gradient
+
+Median of the average unit activation
+for different activation functions.
+
+Training set (straight line) and
+validation set (dotted line) cross
+entropy loss.
+Autoencoder training on MNIST
+Training set reconstruction error over
+epochs, using different activation
+functions and learning rates. The
+results are medians over several runs
+with different random initializations.
+
+Backpropagation for Bounding Box
+
+References:
+[1]
+[2]
+[3]
+[4]
+[5]
+
+Clevert et al, Fast and Accurate Deep Network Learning by Exponential Linear Units (ELUs), arxiv 2015
+Clevert et al, Rectified Factor Networks, NIPS 2015
+Mayr et al, DeepTox: Toxicity Prediction using Deep Learning, Frontiers in Environmental Science 2015
+Desjardins et al., Metric-free natural gradient for joint-training of Boltzmann machines, ICLR 2013
+Martens, Deep learning via Hessian-free optimization, ICML 2010
+
+

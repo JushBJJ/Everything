@@ -1,0 +1,51 @@
+List of activation functions, taken from https://pytorch.org/docs
+The mathematical equations of these activation functions listed will be in in ./AFP/
+
+Linear Activation Functions:
+
+1: ELU
+2: Hardshrink
+3: Hardtanh
+4: LeakyReLU
+5: LogSigmoid
+6: MultiheadAttention
+7: PReLU
+8: ReLU
+9: ReLU6
+10: RReLU
+11: SELU
+12: CELU
+13: GELU
+14: Sigmoid
+15: Softplus
+16: Softshrink
+17: Softsign
+18: Tanh
+19: Tanshrink
+20: Threshold
+21: Softmin
+22: Softmax
+23: Softmax2d
+24: LogSoftmax
+25: AdaptiveLogSoftmaxWithLogs
+
+Linear Activation Functions explained:
+
+1: ELU
+
+- ELU Means Eponential Linear Unit
+- Speeds up learning in deep neural networks which results to higher classification accuracies
+- ELU tries to push the mean towards zero because Zero means speed up learning.
+- Other activation functions like LReLUs and PReLUs do not ensure a "noise-robust deactivation state" (Define noise-robuse deactivation state)
+- ELUs saturate smaller inputs with negative values which decreases the spread of variation and information.
+- ELU networks were reported to be at the top 10 CIFAR-10 reults and best published result of CIFAR-100.
+- ELU is faster in learning compared to ReLU
+- Less than 10% classifcation error compared to ReLU
+- The main advantage of ReLUs compared to ELUs is that ReLUs avoid the vanishing gradient
+- Compared ELUs, ReLUs mean activation is larger than zero.
+- Units that have a non-zero mean activation (like ReLU) act as a bias for the next layer
+- Units (Nodes/Layers) that have a non-zero mean activation, the current mean activation will pass on acting as a bias for the next layer.
+- Failure to cancel out the units will result to a bias shift for the next units for the next layer which causes the standared gradient being further away from the natrual gradient and the Moumoute Online Natrual Gradient Algorithm (TONGA).
+- TONGA uses a low-rank approximation of natrual gradient descent.
+- FActorized Natural Gradient (FANG) estimates the nartural graident according to the approximation of the Fisher Matrix by a Gaussian graphical model.
+-   

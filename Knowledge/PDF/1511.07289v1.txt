@@ -1,0 +1,1412 @@
+Under review as a conference paper at ICLR 2016
+
+FAST AND ACCURATE D EEP N ETWORK L EARNING
+E XPONENTIAL L INEAR U NITS (ELU S )
+
+BY
+
+arXiv:1511.07289v1 [cs.LG] 23 Nov 2015
+
+Djork-Arné Clevert, Thomas Unterthiner & Sepp Hochreiter
+Institute of Bioinformatics
+Johannes Kepler University, Linz, Austria
+{okko,unterthiner,hochreit}@bioinf.jku.at
+
+A BSTRACT
+We introduce the “exponential linear unit” (ELU) which speeds up learning in
+deep neural networks and leads to higher classification accuracies. Like rectified
+linear units (ReLUs), leaky ReLUs (LReLUs) and parametrized ReLUs (PReLUs), ELUs also avoid a vanishing gradient via the identity for positive values.
+However ELUs have improved learning characteristics compared to the units with
+other activation functions. In contrast to ReLUs, ELUs have negative values which
+allows them to push mean unit activations closer to zero. Zero means speed up
+learning because they bring the gradient closer to the unit natural gradient. We
+show that the unit natural gradient differs from the normal gradient by a bias shift
+term, which is proportional to the mean activation of incoming units. Like batch
+normalization, ELUs push the mean towards zero, but with a significantly smaller
+computational footprint. While other activation functions like LReLUs and PReLUs also have negative values, they do not ensure a noise-robust deactivation state.
+ELUs saturate to a negative value with smaller inputs and thereby decrease the
+propagated variation and information. Therefore ELUs code the degree of presence of particular phenomena in the input, while they do not quantitatively model
+the degree of their absence. Consequently, dependencies between ELUs are much
+easier to model and distinct concepts are less likely to interfere.
+We found that ELUs lead not only to faster learning, but also to better generalization performance once networks have many layers (≥ 5). ELU networks were
+among top 10 reported CIFAR-10 results and yielded the best published result on
+CIFAR-100, without resorting to multi-view evaluation or model averaging. On
+ImageNet, ELU networks considerably speed up learning compared to a ReLU
+network with the same architecture, obtaining less than 10% classification error
+for a single crop, single model network.
+
+1
+
+I NTRODUCTION
+
+Currently the most popular activation function for neural networks is the rectified linear unit (ReLU),
+which was first proposed for restricted Boltzmann machines Nair & Hinton (2010) and then successfully used for neural networks Glorot et al. (2011); Zeiler et al. (2013); Dahl et al. (2013). The ReLU
+activation function is linear with slope 1 for positive arguments and zero otherwise, that is, for positive values it is the identity and for negative values the zero function. Besides their sparseness, the
+main advantage of ReLUs is that they avoid the vanishing gradient Glorot et al. (2011); Maas et al.
+(2013); Hochreiter & Schmidhuber (1997); Hochreiter (1991; 1998); Hochreiter et al. (2001a) since
+their derivative is 1 for positive values. However ReLUs are non-negative and, therefore, have a
+mean activation larger than zero.
+Units that have a non-zero mean activation act as bias for the next layer. If such units do not cancel
+each other out, learning causes a bias shift for units in next layer. The more units are correlated,
+the higher their bias shift. We will see that Fisher optimal learning, i.e., the natural gradient Amari
+(1997); Yang & Amari (1998); Amari (1998), would correct for the bias shift by adjusting the bias
+weight update. Thus, less bias shift brings the standard gradient closer to the natural gradient and
+1
+
+Under review as a conference paper at ICLR 2016
+
+speeds up learning. Therefore we aim at activations that have a mean close to zero across the training
+examples, in order to decrease the bias shift effect.
+Centering the activation functions at zero has been proposed in order to keep the off-diagonal entries of the Fisher information matrix small Raiko et al. (2012) but was previously found to speed
+up learning in neural networks LeCun et al. (1991; 1998); Schraudolph (1998). Centering also improved learning in restricted Boltzmann machines Cho et al. (2011); Montavon & Müller (2012).
+To counter the internal covariate shift of the network activations, “batch normalization” has been
+suggested which also centers the hidden activations Ioffe & Szegedy (2015). The Projected Natural
+Gradient Descent algorithm (PRONG) goes beyond batch normalization by implicitly whitening the
+activations Desjardins et al. (2015), therefore also centers them at zero. All these methods tweak the
+network parameters to obtain desired statistics of the activation functions. However distorting the
+network parameters may take back the last learning update and therefore hamper learning. Instead,
+natural gradient descent uses efficient update directions without restricting the network dynamics.
+An alternative way to push the mean activation towards zero is using an appropriate activation function. Therefore tanh was previously preferred over logistic functions LeCun et al. (1991; 1998).
+Recently “Leaky ReLUs” (LReLUs) have been proposed, which replace the negative part of the
+ReLU with a linear function Maas et al. (2013). Leaky ReLUs have been shown to be superior
+to ReLUs in terms of learning speed and performance Maas et al. (2013); Xu et al. (2015). They
+have later been generalized to Parametric Rectified Linear Units (PReLUs) He et al. (2015), which
+adjust the slope of the negative part during learning. PReLUs performed very good on large image benchmark data sets, where they showed better learning behavior than ReLUs He et al. (2015).
+Another version of leaky ReLUs are Randomized Leaky Rectified Linear Units (RReLUs), where
+the slope of the negative part is randomly sampled Xu et al. (2015). Evaluations on image benchmark datasets and convolutional networks demonstrated that non-zero slopes for the negative part in
+ReLUs improve results Xu et al. (2015).
+In contrast to ReLUs, LReLUs, PReLUs, and RReLUs do no longer ensure a noise-robust deactivation state of the units. We propose an activation function that has negative values to allow for mean
+activations close to zero, but at the same time saturate to a negative value with decreasing input. The
+saturation effect decreases the variation of the units if deactivated, so the precise deactivation value
+is irrelevant. Such an activation function can code the degree of presence of particular phenomena
+in the input, but does not quantitatively model the degree of their absence. Therefore, our new activation function is more robust to noise. Consequently, dependencies between coding units are much
+easier to model and much easier to interpret. Furthermore, distinct concepts are much less likely to
+interfere with such activation functions since the deactivation state is non-informative, i.e. variance
+decreasing.
+
+2
+
+Z ERO M EAN ACTIVATIONS S PEED U P L EARNING
+
+To derive and analyze the bias shift effect mentioned in Section1 we use the natural gradient. The
+natural gradient is an update direction which corrects the gradient direction with the Fisher information matrix. The natural gradient method is founded on information geometry Amari (1985);
+Amari & Murata (1993) and became very popular for independent component analysis Amari et al.
+(1996); Choi et al. (1998); Zhang et al. (1999). Thereafter, the natural gradient has also been used for
+stochastic models Park et al. (2000) and for neural networks Amari (1997); Yang & Amari (1998);
+Amari (1998). The recently introduced Hessian-Free Optimization techniques Martens (2010);
+Martens & Sutskever (2011); Chapelle & Erhan (2011); Kiros (2013) and the Krylov Subspace Descent methods Mizutani & Demmel (2003); Vinyals & Povey (2012) use an extended Gauss-Newton
+approximation of the Hessian, therefore they can be interpreted as versions of natural gradient descent Pascanu & Bengio (2014). The natural gradient was also applied to deep Boltzmann machines
+Desjardins et al. (2014), reinforcement learning Kakade (2002); Peters et al. (2005); Bhatnagar et al.
+(2008), and natural evolution strategies Sun et al. (2009); Wierstra et al. (2014).
+Since for neural networks and deep learning the computation of the Fisher information matrix is too
+expensive, different approximations of the natural gradient have been proposed. For example the
+Fisher matrix can be approximated in a block-diagonal form, where unit-wise or quasi-diagonal natural gradients are used Olivier (2013). Unit-wise natural gradients have been previously used Kurita
+(1993) and go back to natural gradients for perceptrons Amari (1998); Yang & Amari (1998). Top2
+
+Under review as a conference paper at ICLR 2016
+
+moumoute Online natural Gradient Algorithm (TONGA) LeRoux et al. (2008) uses a low-rank approximation of natural gradient descent. FActorized Natural Gradient (FANG) Grosse & Salakhudinov (2015) estimates the natural gradient via an approximation of the Fisher matrix by a Gaussian
+graphical model. The natural gradient has been combined with the Newton method for an efficient
+second order method LeRoux & Fitzgibbon (2010).
+We assume a parametrized probabilistic model p(x; w) with parameter vector w and data x. The
+training data are X = (x1 , . . . , xN ) ∈ R(d+1)×N with xn = (znT , yn )T ∈ Rd+1 , where zn is the
+input for example n and yn is its label. The loss of one example x = (z T , y)T using model p(.; w)
+is L(y, p(z; w)) and the average loss on the training data X is the empirical risk Remp (p(.; w), X).
+Gradient descent updates the weight vector w by wnew = wold − η∇w Remp where η is the learning
+rate. The natural gradient is the inverse Fisher information matrix F −1 multiplied by the gradient
+−1
+of the empirical risk: ∇nat
+∇w Remp .
+w Remp = F
+For a multi-layer perceptron (MLP) a is the vector of the unit’s activity and a0 = 1 is the bias unit
+activity. We consider the ingoing weights to unit i, therefore we drop the index i: wj = wij for
+the weight from unit j to unit i, net = neti for the net input to unit i, a = ai for the activation
+of unit P
+i, and δ = δi for the delta error at unit i. w0 is the bias weight of unit i. The net input is
+net = j wj aj . The activation function f maps the net input to the activation a = f (net). For
+∂
+example x = (z T , y)T , the delta error at unit i is δ = ∂net
+L (y, p (z; w)), which gives for the
+∂
+derivative ∂wj L (y, p (z; w)) = δaj .
+∂
+For the Fisher information matrix, we need the gradient of the log output function ∂w
+ln p (x; w).
+j
+Since p (x; w) = p (y | z; w) p(z), only p (y | z; w) depends on the weights. Therefore we define
+∂
+the δ̂ at unit i as δ̂ = ∂net
+ln p (y | z; w), which can be computed via the backpropagation algorithm,
+but starting from the log-output probability instead of the loss function. For the derivative we obtain
+∂
+∂wj ln p (y | z; w) = δ̂aj .
+
+We restrict the Fisher information matrix to weights leading to unit i, which is the unit Fisher information matrix F . The unit Fisher information matrix F captures only the interactions of weights
+to unit i. Consequently, the unit natural gradient only corrects the interactions of weights to unit i.
+In particular the affect of the bias weight update can be adjusted by the unit natural gradient. Unit
+natural gradients have been previously used Kurita (1993); Olivier (2013) and go back to natural
+gradients for perceptrons Amari (1998); Yang & Amari (1998). The unit Fisher information matrix
+is
+
+
+
+
+∂ ln p(y | z; w) ∂ ln p(y | z; w)
+[F (w)]kj = Ep(x;w)
+= Ep(x;w) δ̂ 2 ak aj
+(1)
+∂wk
+∂wj
+ 
+ 
+
+
+
+,
+δ̄ 2 = Ep(y|z;w) δ̂ 2 .
+= Ep(z) Ep(y|z;w) δ̂ 2 ak aj = Ep(z) δ̄ 2 ak aj
+Weighting the activations by δ̄ 2 is equivalent to adjusting the probability of drawing inputs z. z with
+large δ̄ 2 a drawn with higher probability and and inputs z with small δ̄ 2 with smaller probability.
+Since 0 ≤ δ̄ 2 = δ̄ 2 (z), we can define a distribution q(z):
+Z
+−1
+
+2
+2
+2
+q(z) = δ̄ (z) p(z)
+δ̄ (z) p(z) dz
+= δ̄ 2 (z) p(z) E−1
+.
+(2)
+p(z) δ̄
+Using the distribution q(z), the entries of the Fisher information matrix can be expressed as a covariance:
+Z
+
+
+[F (w)]kj = Ep(z) δ̄ 2 ak aj =
+δ̄ 2 ak aj p(z) dz = Ep(z) δ̄ 2 Eq(z) (ak aj ) . (3)
+If the bias unit is unit j = 0 with a0 = 1 and weight w0 then we can divide the complete weight
+vector w+ into a bias part w0 and the rest w: w+ = (wT , w0 )T . For the row b of the Fisher
+information matrix that is associated with the bias, we have for b = [F (w)]0 :
+
+
+
+
+b = Ep(z) δ̄ 2 a = Ep(z) δ̄ 2 Eq(z) (a) = Covp(z) δ̄ 2 , a + Ep(z) (a) Ep(z) δ̄ 2 . (4)
+3
+
+Under review as a conference paper at ICLR 2016
+
+The next Theorem 1 gives the correction of the standard gradient by the unit natural gradient where
+the bias weight is treated separately. The resulting formulas are similar to Definition 6 of Olivier
+(2013).
+Theorem 1. The unit natural gradient corrects the weight update to a unit (∆wT , ∆w0 )T by following affine transformation of the gradient ∇(w,w0 ) Remp = (g T , g0 )T :
+
+
+ −1
+
+A (g − ∆w0 b)
+∆w
+=
+,
+(5)
+∆w0
+s g0 − bT A−1 g
+where A is the unit Fisher information matrix without the bias weight. The vector b = [F (w)]0 is
+the unit Fisher matrix column corresponding to the bias weight, and the scalar s is
+
+ 
+−1
+T
+2
+s = E−1
+1
++
+E
+(a)
+Var
+(a)
+E
+(a)
+,
+(6)
+δ̄
+q(z)
+q(z)
+q(z)
+p(z)
+where a is the vector of activations of units with weights to unit i and
+ 
+
+2
+q(z) = δ̄ 2 (z) p(z) E−1
+,
+δ̄ 2 (z) = Ep(y|z;w) δ̂ 2 .
+p(z) δ̄
+
+(7)
+
+Proof. We separate the local Fisher matrix F of unit i with W incoming weights w+ = (wT , w0 )T
+into a bias part given by w0 and the rest w. Multiplying the inverse Fisher matrix with the separated
+gradient ∇w+ Remp (w+ , X) = g + = (g T , g0 )T gives the weight update ∆w+ = (∆wT , ∆w0 )T :
+
+−1  
+
+
+ −1
+
+A b
+∆w
+g
+A g + u s−1 uT g + go u
+=
+=
+.
+(8)
+∆w0
+g0
+bT c
+uT g + s g0
+where
+b = [F (w)]0
+
+,
+
+c = [F (w)]00
+
+,
+
+u = − s A−1 b
+
+,
+
+s = c − bT A−1 b
+
+−1
+
+This formula is derived in Lemma 1. When inserting ∆w0 in the update of ∆w, we obtain
+
+
+
+ −1
+
+
+
+ −1
+A (g − ∆w0 b)
+A g + s−1 u ∆w0
+∆w
+∆w
+.
+=
+,
+=
+∆w0
+∆w0
+s g0 − bT A−1 g
+uT g + s g0
+
+. (9)
+
+(10)
+
+The right hand side is obtained by inserting
+u = −sA−1 b in the left hand side
+ update. Since
+
+2
+2
+c = F00 = Ep(z) δ̄ , b = Ep(z) δ̄ Eq(z) (a), and A = Ep(z) δ̄ 2 Eq(z) aaT , we obtain
+−1
+ 
+
+−1
+2
+T
+.
+(11)
+Eq(z) (a)
+s = c − bT A−1 b
+= E−1
+1 − ETq(z) (a) E−1
+p(z) δ̄
+q(z) aa
+Applying Lemma 2 gives the formula for s.
+Corollary 1. The weight update correction of the unit natural gradient for the bias weight increases
+monotonically with the length of the vector Eq(z) (a).
+Proof. The weight update correction is given in Theorem 1. The larger the norm of Eq(z) (a) is,
+the larger is the multiplicative correction s of the bias weight update. The value s is a positive
+constant plus a quadratic form of the inverse of the positive definite covariance matrix Var−1
+q(z) (a)
+in Theorem 1. The additive bias correction of the bias weight update is the inner product between
+w’s natural gradient update A−1 g and b. Since b is a multiple of Eq(z) (a), the inner product also
+increases with the length of Eq(z) (a). The correction for ∆w is directly proportional to both b,
+therefore also to Eq(z) (a), and ∆w0 .
+We compute the bias shift of unit i caused by the weight update, i.e. the change of the mean of
+unit i. Towards this end we compute the average change of the net input of unit i. Since only the
+activations depend on the input, the bias shift is given by multiplying the weight update by the mean
+of the activation vector a, where we use ∆w0 = − s bT A−1 g + s g0 :
+
+T 
+
+
+T  −1
+
+Ep(z) (a)
+Ep(z) (a)
+∆w
+A g − A−1 b ∆w0
+=
+(12)
+∆w0
+1
+1
+∆w0
+
+= Ep(z) (a)T A−1 g + 1 − Ep(z) (a)T A−1 b ∆w0
+
+
+
+= Ep(z) (a)T − 1 − Ep(z) (a)T A−1 b s bT A−1 g + s 1 − Ep(z) (a)T A−1 b g0 .
+4
+
+Under review as a conference paper at ICLR 2016
+
+
+
+In Eq. (12) the term Ep(z) (a)T − 1 − Ep(z) (a)T A−1 b sbT A−1 g is the bias shift due weight
+updates of connections from the previous layer while s 1 − Ep(z) (a)T A−1 b g0 is the shiftof the
+mean value of unit i due to the regular bias weight update. The term 1 − Ep(z) (a)T A−1 b sb is
+the bias shift correction due to the unit natural gradient.
+Next, Theorem 2 states that the bias shift of unit i is mitigated or even prevented by the bias shift
+correction. Furthermore,
+the theorem shows that the bias shift correction is goverened by the size of
+
+Covp(z) δ̄ 2 , a .
+Theorem 2. The bias shift correction of unit i by the unit natural gradient update is equivalent to
+following correction of the incoming mean Ep(z) (a):
+
+
+− (1 + k) Eq(z) (a) , where k = s Ep(z) δ̄ 2 CovTp(z) δ̄ 2 , a A−1 Eq(z) (a) .
+(13)
+
+2
+For Covp(z) δ̄ , a = 0, the incoming mean Ep(z) (a) is corrected to zero.
+Proof. We analyze the bias shift correction term defined in Eq. (12), starting with its first factor:
+
+1 − Ep(z) (a)T A−1 b = 1 − Ep(z) δ̄ 2 Ep(z) (a)T A−1 Eq(z) (a)
+(14)
+
+
+
+
+= 1 − Ep(z) δ̄ 2 Eq(z) (a)T − CovTp(z) δ̄ 2 , a A−1 Eq(z) (a)
+ −1
+T
+T
+2
+= 1 − Eq(z) (a)T E−1
+Eq(z) (a)
+q(z) (aa )Eq(z) (a) + Covp(z) δ̄ , a A
+ −1
+ −1
+T
+−1
+2
+2
+= Ep(z) δ̄ s
++ Covp(z) δ̄ , a A Eq(z) (a) ,
+where we used Eq. (4). Next, we reformulate the full bias shift correction term using previous
+equation:
+
+
+
+
+
+2
++ s CovTp(z) δ̄ 2 , a A−1 Eq(z) (a) b
+(15)
+s 1 − Ep(z) (a)T A−1 b b = E−1
+p(z) δ̄
+
+
+
+
+= 1 + s Ep(z) δ̄ 2 CovTp(z) δ̄ 2 , a A−1 Eq(z) (a) Eq(z) (a) = (1 + k) Eq(z) (a) .
+
+For Covp(z) δ̄ 2 , a = 0 we have k = 0 and Eq(z) (a) = Ep(z) (a) (see Eq. (4)), therefore the
+mean incoming activation vector Ep(z) (a) is corrected to a zero mean vector by the unit natural
+gradient.
+If the incoming units have non-zero means of the same sign, then the mean of unit i is likely to
+be shifted via the weight updates depending on the unit natural gradient A−1 g. The unit natural
+gradient corrects this bias shift of unit i by the bias weight to ensure optimal learning. This correction
+can be viewed as shifting the mean activation of the incoming units towards zero. Without the
+correction, bias shift of unit i lead to oscillations and impede learning progress. Therefore small
+absolute means of the activations are desired for efficient learning. Small means may be achieved by
+(i) unit zero mean normalization LeCun et al. (1991; 1998); Schraudolph (1998); Cho et al. (2011);
+Raiko et al. (2012); Montavon & Müller (2012); Ioffe & Szegedy (2015); Desjardins et al. (2015) or
+(ii) activation functions with a negative part Maas et al. (2013); Xu et al. (2015); He et al. (2015).
+We introduce new activation functions with a negative part.
+
+3
+
+E XPONENTIAL L INEAR U NITS (ELU S )
+
+We introduce the exponential linear unit (ELU) with 0 < α:
+
+x
+if x ≥ 0
+f (x) =
+α (exp(x) − 1) if x < 0
+
+1
+if x ≥ 0
+f 0 (x) =
+.
+f (x) + α if x < 0
+
+,
+
+(16)
+(17)
+
+The ELU hyperparameter α controls the value to which an ELU saturate for negative
+net inputs (see Fig. 1).
+ELUs avoid the vanishing gradient problem as rectified linear units (ReLUs) and leaky ReLUs (LReLUs) do.
+The gradient does not vanish because the positive part of these functions is the identity, therefore their derivative is
+one.
+Thus, these activation functions are well suited for deep neural networks with
+many layers where a vanishing gradient impedes learning Unterthiner et al. (2014; 2015).
+5
+
+Under review as a conference paper at ICLR 2016
+
+f(x)
+
+In contrast to ReLUs, ELUs have negative values
+ELU
+which pushes the mean of the activations closer to
+4
+LReLU
+zero. Mean activations that are closer to zero enable
+ReLU
+faster learning as they bring the gradient closer to the
+2
+natural gradient (see Corollary 1 and Theorem 2).
+For the same reasons tanh was previously found to
+0
+speed up learning compared to the logistic function
+LeCun et al. (1991; 1998). While LReLUs and PRe−10
+−5
+0
+5
+LUs have also negative values, they do not ensure a
+x
+noise-robust deactivation state, that is, a noise-robust
+negative value. ELUs saturate to a negative value for
+negative net inputs. Saturation means a small deriva- Figure 1: Different activation functions. The
+tive of the activation function which decreases the rectified linear unit (ReLU), the leaky ReLU
+variation and the information that is propagated to (LReLU) for α = 0.1, and the exponential
+the next layer Hochreiter et al. (2001b); Hochreiter linear unit (ELU) for α = 1.0 are depicted.
+(1997; 1998). ELUs code the degree of presence of
+input concepts, while they do not quantify the degree of their absence Clevert et al. (2015). Dependencies between ELUs are easier to model than between LReLUs or PReLUs because the causes for
+deactivations are not distinguished. Furthermore ELUs that code distinct concepts are less likely to
+interfere because uninformative negative values avoid distributed codes. Positively activated ELUs
+interact by activating units of the next layer.
+
+4
+
+E XPERIMENTS U SING ELU S
+
+In this section, we assess the performance of exponential linear units (ELUs) if used for unsupervised
+and supervised learning of deep autoencoders and deep convolutional networks, by comparing them
+with (i) Rectified Linear Units (ReLUs) and (ii) Leaky Linear Units (LReLUs). For comparisons we
+use the following benchmark datasets to compare ELUs with other units: (i) MNIST (gray images in
+10 classes, 60k training and 10k testing images), (ii) CIFAR-10 (color images in 10 categories, 50k
+training and 10k testing images), (iii) CIFAR-100 (color images in 100 categories, 50k training and
+10k testing images), and (iv) ImageNet (color images in 1000 categories, 1.3M training and 100k
+testing images).
+4.1
+
+MNIST
+
+1.0
+
+102
+
+elu
+relu
+leaky
+
+Cross Entropy Loss
+
+Avg. Unit Activation
+
+0.9
+0.8
+0.7
+0.6
+0.5
+
+elu
+relu
+leaky
+
+0.4
+0.3
+
+0
+
+10
+
+20
+
+30
+
+epoch
+
+40
+
+101
+100
+10­1
+10­2
+
+50
+
+(a) Average unit activation
+
+0
+
+10
+
+20
+
+30
+
+epoch
+
+40
+
+50
+
+(b) Cross entropy loss
+
+Figure 2: ELU networks evaluated at MNIST. Lines are the average over five runs with different
+random initializations, error bars show standard deviation. Panel (a): median of the average unit
+activation for different activation functions. Panel (b): Training set (straight line) and validation set
+(dotted line) cross entropy loss.
+
+6
+
+Under review as a conference paper at ICLR 2016
+
+4.1.1
+
+L EARNING B EHAVIOR
+
+We first established that ELUs keep the mean activation closer to zero by training fully connected
+deep neural networks on the MNIST digit classification dataset and tracking each hidden unit’s
+activation during training. We did this for ELUs, ReLUs as well as Leaky ReLU units with a
+negative slope of 0.1. Each network had five hidden layers of 256 units each, and was trained by
+stochastic gradient descent using a learning rate of 0.01 with mini-batches of size 64 was trained for
+50 epochs. The ELU hyperparameter α was set to 1.0 for all experiments. The weights have been
+initialized according to He et al. (2015), which has been specifically designed to speed up learning
+with ReLU units. After each epoch we calculated the units’ average activations on a fixed subset of
+the training data. We plotted the median over all units in Fig. 2, which shows that ELUs stay closer
+to zero throughout the training process, while their training error decreases much more rapidly than
+it does for the other activation functions.
+4.1.2
+
+AUTO E NCODER L EARNING
+
+To evaluate how well ELUs work in an unsupervised setting. Therefore, we replicated the experiments from Martens (2010) and Desjardins
+et al. (2015), where a deep autoencoder was
+trained on the MNIST dataset, with the objective to minimize the reconstruction error. The
+encoder part of the network consisted of four
+fully connected hidden layers with sizes 1000,
+500, 250 and 30, respectively. The decoder part
+was symmetrical to the encoder. We performed
+the experiments using four different learning
+rates (10−2 , 10−3 , 10−4 , 10−5 ). Learning was
+based on stochastic gradient descent with minibatches of 64 samples for 500 epochs. Fig. 3
+shows, that ELUs outperform the competing activation functions in terms of training set reconstruction error for all learning rates. We also
+note that similar to Desjardins et al. (2015),
+higher learning rates always seem to perform
+better.
+4.2
+
+Figure 3: Autoencoder training on MNIST: training set reconstruction error over epochs, using different activation functions and learning rates. The
+results are medians over several runs with different random initializations.
+
+C OMPARISON OF ACTIVATION F UNCTIONS
+
+In this subsection, we conducted a benchmark experiment using a relatively simple deep convolutional network architecture in order to compare ELUs to ReLUs and LReLUs based on their learning
+behavior.
+The model used for our baseline CIFAR-100 experiment consists of 11 convolutional layers arranged
+in stacks of {1 × 192 × 5, 2 × 240 × 3, 2 × 260 × 2, 2 × 280 × 2, 2 × 300 × 2, 1 × 300 × 1, 1 ×
+100 × 1} layers × units × receptive fields. 2×2 max-pooling with a stride of 2 was applied after
+each stack. For network regularization we used the following drop-out rate for the last layer of
+each stack {0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.0}. The L2-weight decay regularization term was set to
+0.0005. The following learning rate schedule was applied {0 − 35k(0.03), 35k − 85k(0.015), 85k −
+135k(0.0015), 135k − 165k(0.00015)} (iterations (learning rate)). The momentum term was fixed
+at 0.9. The dataset was preprocessed as described in Goodfellow et al. (2013) with global contrast
+normalization and ZCA whitening. Additionally, the images were padded with four zero pixels at all
+borders. The model was trained on 32 × 32 random crops with random horizontal flipping. Besides
+that, we no further augmented the dataset during training.
+Fig. 4 shows, that ELUs achieve better training loss and test error than ReLUs or LReLUs. Notice
+that for the sake of comparison, we used the same step-wise learning rate schedule for all activation
+functions, which was optimized for ReLU networks during previous experiments. Fig. 4 suggests
+that ELUs converge faster than ReLU and LReLU networks and therefore would benefit from a
+better designed schedule adjusted to ELUs. The current schedule was optimized for ReLUs and
+7
+
+Under review as a conference paper at ICLR 2016
+
+5
+
+relu
+leaky
+elu
+4
+
+relu
+leaky
+elu
+
+relu
+leaky
+elu
+
+1.2
+
+4
+
+Train Loss
+
+Train Loss
+
+Train Loss
+
+1.0
+3
+
+3
+
+2
+
+0.8
+
+2
+
+0.6
+
+1
+0.4
+
+1
+0
+
+50
+
+100
+
+Updates (1e3)
+
+150
+
+0
+
+(a) Training loss
+100
+
+20
+
+40
+
+Updates (1e3)
+
+60
+
+75
+
+(b) Training loss (start)
+relu
+leaky
+elu
+
+100
+
+100
+
+125
+
+Updates (1e3)
+
+150
+
+(c) Training loss (end)
+relu
+leaky
+elu
+
+40.0
+
+relu
+leaky
+elu
+
+37.5
+
+60
+
+80
+
+Test Error [%]
+
+Test Error [%]
+
+Test Error [%]
+
+80
+
+35.0
+
+60
+
+32.5
+
+40
+
+30.0
+
+40
+
+0
+
+50
+
+100
+
+Updates (1e3)
+
+(d) Test error
+
+150
+
+0
+
+20
+
+40
+
+Updates (1e3)
+
+60
+
+(e) Test error (start)
+
+75
+
+100
+
+125
+
+Updates (1e3)
+
+150
+
+(f) Test error (end)
+
+Figure 4: The panels (a-c) show the training loss while the lower panels (d-f) show the classification
+error on CIFAR-100. On CIFAR-100, ELUs achieve better test error and lower training loss. For
+the sake of comparison, we used the same step-wise learning rate schedule for this experiment.
+
+LReLUs. ELUs yield a test error of 28.16%, while ReLUs and LReLUs yield 29.06% and 28.78%,
+respectively. In summary, ELUs outperform ReLUs and LReLUs in terms of training loss and test
+error.
+
+4.3
+
+C LASSIFICATION P ERFORMANCE ON CIFAR-100 AND CIFAR-10
+
+After showing that ELUs indeed posses the superior learning behavior as postulated in Section 3,
+the following experiments were meant to highlight their generalization capabilities. Therefore, the
+networks in this section have a more sophisticated architecture than the networks in the previous
+subsection. The architecture of the deep convolution network consists of 18 convolutional layers
+arranged in stacks of {1 × 384 × 3, 3 × 640 × 3, 4 × 768 × 3, 3 × 896 × 3, 3 × 1024 × 3, 3 ×
+1152 × 3, 1 × 100 × 1} layers × units × receptive fields. 2×2 max-pooling with a stride of 2 was
+applied after each stack. For network regularization we used the following drop-out rate for all layers
+in a stack {0.0, 0.15, 0.3, 0.45, 0.6, 0.8, 0.0}. The L2-weight decay regularization term was set to
+0.0005. The initial learning rate was set to 0.01 and decreased by a factor of 10 after 35k iterations.
+The momentum term was fixed as 0.9 and the mini-batch size is fixed as 50. For both datasets we
+applied the same preprocessing, padding and cropping as described in the previous section.
+A comparison of ELU networks and other convolutional networks on CIFAR-10 and CIFAR-100 is
+given in Tab.1. On both datasets, ELU-networks performed best and reached a test error of 6.55%
+and 24.28% for CIFAR-10 and CIFAR-100. ELU networks were among top 10 reported CIFAR10 results and yielded the best published result on CIFAR-100, without resorting to multi-view
+evaluation or model averaging.
+8
+
+Under review as a conference paper at ICLR 2016
+
+Table 1: Comparison of ELU networks and other convolutional networks on CIFAR-10 and CIFAR100. Reported is the test error in percent misclassification for ELU networks and recent convolutional architectures like AlexNet Krizhevsky et al. (2012), DSN Lee et al. (2015), NiN Lin et al.
+(2013), Maxout Goodfellow et al. (2013), All-CNN Springenberg et al. (2014), Highway Network
+Srivastava et al. (2015). Best results are in bold.
+Network
+AlexNet
+DSN
+NiN
+Maxout
+All-CNN
+Highway Network
+ELU-Network
+
+4.3.1
+
+CIFAR-10 (test error %)
+18.04
+7.97
+8.81
+9.38
+7.25
+7.60
+6.55
+
+CIFAR-100 (test error %)
+45.80
+34.57
+35.68
+38.57
+33.71
+32.24
+24.28
+
+augmented
+√
+√
+√
+√
+√
+
+I MAGE N ET C HALLENGE DATASET
+
+In the final experiment, we evaluated ELU-networks on the 1000-class ImageNet dataset, which
+contains about 1.3M training color images as well as additional 50k images and 100k images for
+validation and testing, respectively. For this task, we designed a 15 layer deep convolutional network, which was arranged in stacks of {1×96×6, 3×512×3, 5×768×3, 3×1024×3, 2×4096×
+F C, 1 × 1000 × F C} layers × units × receptive fields or fully-connected (FC). 2×2 max-pooling
+with a stride of 2 was applied after each stack and spatial pyramid pooling (SPP) with 3 levels before the first FC layer He et al. (2015). For network regularization we set the L2-weight decay term
+to 0.0005 and used 50% drop-out in the two penultimate FC layers. Before training we re-sized
+the images to 256×256 pixels, subtracted the per-pixel mean. Training was done on 224 × 224
+random crops with random horizontal flipping. Besides that, we didn’t augment the dataset during
+training. The single-model performance was evaluated on the single center crop with no further
+
+relu
+elu
+
+Train Loss
+
+Top 5 Test Error [%]
+
+6
+
+100
+
+5
+
+4
+
+relu
+elu
+
+100
+
+Top 1 Test Error [%]
+
+7
+
+80
+
+60
+
+relu
+elu
+
+90
+
+80
+
+70
+3
+
+40
+0
+
+10
+
+20
+
+30
+
+Updates (1e3)
+
+(a) Training loss
+
+40
+
+0
+
+100
+
+200
+
+300
+
+Updates (1e3)
+
+(b) Top-5 test error
+
+400
+
+0
+
+100
+
+200
+
+300
+
+Updates (1e3)
+
+400
+
+(c) Top-1 test error
+
+Figure 5: ELUs used for the ImageNet classification task. The x-axis gives the number of iterations.
+The y-axis shows the training loss (a), top-5 error (b) and the top-1 error (c) of 5,000 random
+validation samples, evaluated on the center crop. Both activation functions ELU (purple) and ReLU
+(blue) lead for convergence, but ELUs start reducing the error earlier and reach the 50% top-5 error
+after 26k iterations, while ReLUs need 38k iterations to reach the same error rate.
+augmentation and yielded a top-5 validation error below 10%. Fig. 5 shows the learning behavior
+of our model for ELUs and ReLUs. Panel (b) suggests that ELUs start reducing the error earlier.
+The ELU-network already reaches the 50% top-5 error after 26k iterations, while the ReLU network
+needs 38k iterations to reach the same error rate.
+9
+
+Under review as a conference paper at ICLR 2016
+
+5
+
+C ONCLUSION
+
+In this paper we introduced the novel exponential linear units, units with a nonlinear activation
+function for deep learning. These units have negative values, which allows the network to push the
+mean activation of its units closer to zero. This helps to bridge the gap between the normal gradient
+and the unit natural gradient, thereby speeding up learning. We believe that this property is also
+the reason for the success of activation functions like LReLUs and PReLUs. In contrast to these
+methods, ELUs have a clear saturation plateau in its negative regime, allowing them to learn a more
+robust and stable representation. Experimental results show that ELUs outperform other activation
+functions on many vision datasets, achieving one of the top 10 best reported results on CIFAR-10
+and setting a new state of the art in CIFAR-100 without the need for multi-view test evaluation or
+model averaging. Furthermore, ELU networks produced competitive results on the ImageNet in
+much fewer epochs than a corresponding ReLU network.
+In our experience ELUs are most effective once the number of layers in a network is larger than 4.
+For such networks, ELUs consistently outperform ReLUs and its variants with negative slopes. On
+ImageNet we observed that ELUs are able to converge to a state of the art solution in much less
+time it takes comparable ReLU networks. Given their outstanding performance, we expect ELU
+networks to become a real time saver in convolutional networks, which are notably time-intensive
+to train from scratch otherwise.
+Acknowledgment. We thank the NVIDIA Corporation for supporting this research with several
+Titan X GPUs and Roland Vollgraf and Martin Heusel for helpful discussions and comments on this
+work.
+
+R EFERENCES
+Amari, S. Differential-Geometrical Methods in Statistic. Springer, New York, 1985.
+Amari, S. and Murata, N. Statistical theory of learning curves under entropic loss criterion. Neural Computation, 5(1):140–153, 1993.
+Amari, S., Cichocki, A., and Yang, H. H. A new learning algorithm for blind signal separation. In Touretzky,
+D. S., Mozer, M. C., and Hasselmo, M. E. (eds.), Advances in Neural Information Processing Systems 8
+(NIPS8), pp. 757–763. The MIT Press, Cambridge, MA, 1996.
+Amari, S.-I. Neural learning in structured parameter spaces — natural Riemannian gradient. In Mozer, M. C.,
+Jordan, M. I., and Petsche, T. (eds.), Advances in Neural Information Processing Systems 9 (NIPS9), volume 9, pp. 127–133. The MIT Press, 1997.
+Amari, S.-I. Natural gradient works efficiently in learning. Neural Computation, 10(2):251–276, 1998.
+Bhatnagar, S., Ghavamzadeh, M., Lee, M., and Sutton, R. S. Incremental natural actor-critic algorithms. In
+Platt, J. C., Koller, D., Singer, Y., and Roweis, S. T. (eds.), Advances in Neural Information Processing
+Systems 20 (NIPS20), pp. 105–112. MIT Press, 2008.
+Chapelle, O. and Erhan, D. Improved preconditioner for Hessian free optimization. In NIPS Workshop on Deep
+Learning and Unsupervised Feature Learning, 2011. URL olivier.chapelle.cc/pub/precond.
+pdf.
+Cho, K., Raiko, T., and Ilin, A. Enhanced gradient and adaptive learning rate for training restricted Boltzmann
+machines. In Getoor, L. and Scheffer, T. (eds.), Proceedings of the 28th International Conference on Machine
+Learning (ICML11), pp. 105–112, 2011.
+Choi, S., Amari, S., Cichocki, A., and Liu, R. Natural gradient learning with a nonholonomic constraints for
+blind deconvolution of multiple channels. In Proceeding of IEEE, 1998.
+Clevert, D.-A., Unterthiner, T., Mayr, A., and Hochreiter, S. Rectified factor networks. In Cortes, C., Lawrence,
+N. D., Lee, D. D., Sugiyama, M., and Garnett, R. (eds.), Advances in Neural Information Processing Systems
+28. Curran Associates, Inc., 2015.
+Dahl, G. E., Sainath, T. N., and Hinton, G. E. Improving deep neural networks for LVCSR using rectified linear
+units and dropout. In IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP),
+pp. 8609–8613. IEEE, 2013.
+Desjardins, G., Pascanu, R., Courville, A., and Bengio, Y. Metric-free natural gradient for joint-training of
+Boltzmann machines. In International Conference on Learning Representations 2013, 2014. URL http:
+//arxiv.org/abs/1301.3545. arXiv:1301.3545.
+Desjardins, G., Simonyan, K., Pascanu, R., and Kavukcuoglu, K. Natural neural networks. CoRR,
+abs/1507.00210, 2015. URL http://arxiv.org/abs/1507.00210.
+
+10
+
+Under review as a conference paper at ICLR 2016
+
+Glorot, X., Bordes, A., and Bengio, Y. Deep sparse rectifier neural networks. In Gordon, G., Dunson, D.,
+and Dudk, M. (eds.), JMLR W&CP: Proceedings of the Fourteenth International Conference on Artificial
+Intelligence and Statistics (AISTATS 2011), volume 15, pp. 315–323, 2011.
+Goodfellow, I. J., Warde-Farley, D., Mirza, M., Courville, A., and Bengio, Y. Maxout networks. ArXiv e-prints,
+2013.
+Grosse, R. and Salakhudinov, R. Scaling up natural gradient by sparsely factorizing the inverse Fisher
+matrix. Journal of Machine Learning Research, 37:2304–2313, 2015. URL http://jmlr.org/
+proceedings/papers/v37/grosse15.pdf. Proceedings of the 32nd International Conference on
+Machine Learning (ICML15).
+He, K., Zhang, X., Ren, S., and Sun, J. Delving deep into rectifiers: Surpassing human-level performance on
+imagenet classification. In IEEE International Conference on Computer Vision (ICCV), 2015.
+Hochreiter, S.
+Untersuchungen zu dynamischen neuronalen Netzen. Diploma thesis, Institut für Informatik, Lehrstuhl Prof. Brauer, Technische Universität München, 1991. See www7.informatik.tumuenchen.de/˜hochreit.
+Hochreiter, S. Recurrent neural net learning and vanishing gradient. In Freksa, C. (ed.), Proceedings in Artificial
+Intelligence — Fuzzy-Neuro-Systeme 97, pp. 130–137. INFIX, Sankt Augustin, Germany, 1997.
+Hochreiter, S. The vanishing gradient problem during learning recurrent neural nets and problem solutions.
+International Journal of Uncertainty, Fuzziness and Knowledge-Based Systems, 6(2):107–116, 1998.
+Hochreiter, S. and Schmidhuber, J. Long short-term memory. Neural Computation, 9(8):1735–1780, 1997.
+Extended version available in WWW homepages of Hochreiter and Schmidhuber.
+Hochreiter, S., Bengio, Y., Frasconi, P., and Schmidhuber, J. Gradient flow in recurrent nets: the difficulty
+of learning long-term dependencies. In Kremer and Kolen (eds.), A Field Guide to Dynamical Recurrent
+Neural Networks. IEEE Press, 2001a.
+Hochreiter, S., Younger, A. S., and Conwell, P. R. Learning to learn using gradient descent. In Dorffner, G.,
+Bischof, H., and Hornik, K. (eds.), International Conference on Artificial Neural Networks (ICANN), volume
+2130 of Lecture Notes in Computer Science, pp. 87–94. Springer, 2001b.
+Ioffe, S. and Szegedy, C. Batch normalization: Accelerating deep network training by reducing internal covariate shift. Journal of Machine Learning Research, 37:448–456, 2015. URL http://jmlr.org/
+proceedings/papers/v37/ioffe15.pdf. Proceedings of the 32nd International Conference on
+Machine Learning (ICML15).
+Kakade, S. M. A natural policy gradient. In Dietterich, T. G., Becker, S., and Ghahramani, Z. (eds.), Advances
+in Neural Information Processing Systems 14 (NIPS14), pp. 1531–1538. MIT Press, 2002.
+Kiros, R. Training neural networks with stochastic Hessian-free optimization. In Proceedings of the International Conference on Learning Representations (ICLR), 2013. URL http://arxiv.org/pdf/1301.
+3641v3. arXiv:1301.3641.
+Krizhevsky, A., Sutskever, I., and Hinton, G. E. ImageNet classification with deep convolutional neural networks. In Pereira, F., Burges, C. J. C., Bottou, L., and Weinberger, K. Q. (eds.), Advances in Neural
+Information Processing Systems 25, pp. 1097–1105. Curran Associates, Inc., 2012.
+Kurita, T. Iterative weighted least squares algorithms for neural networks classifiers. In Proceedings of the Third
+Workshop on Algorithmic Learning Theory (ALT92), volume 743 of Lecture Notes in Computer Science, pp.
+77–86. Springer, 1993.
+LeCun, Y., Kanter, I., and Solla, S. A. Eigenvalues of covariance matrices: Application to neural-network
+learning. Physical Review Letters, 66(18):2396–2399, 1991.
+LeCun, Y., Bottou, L., Orr, G. B., and Müller, K.-R. Efficient backprop. In Orr, G. B. and Müller, K.-R.
+(eds.), Neural Networks: Tricks of the Trade, volume 1524 of Lecture Notes in Computer Science, pp. 9–50.
+Springer, 1998.
+Lee, Chen-Yu, Xie, Saining, Gallagher, Patrick W., Zhang, Zhengyou, and Tu, Zhuowen. Deeply-supervised
+nets. In AISTATS, 2015.
+LeRoux, N. and Fitzgibbon, A. W. A fast natural Newton method. In Fürnkranz, J. and Joachims, T. (eds.),
+Proceedings of the 27th International Conference on Machine Learning (ICML10), pp. 623–630, 2010.
+LeRoux, N., Manzagol, P.-A., and Bengio, Y. Topmoumoute online natural gradient algorithm. In Platt, J. C.,
+Koller, D., Singer, Y., and Roweis, S. T. (eds.), Advances in Neural Information Processing Systems 20
+(NIPS), pp. 849–856, 2008.
+Lin, Min, Chen, Qiang, and Yan, Shuicheng. Network in network. CoRR, abs/1312.4400, 2013. URL http:
+//arxiv.org/abs/1312.4400.
+Maas, A. L., Hannun, A. Y., and Ng, A. Y. Rectifier nonlinearities improve neural network acoustic models. In
+Proceedings of the 30th International Conference on Machine Learning (ICML13), 2013.
+Martens, J. Deep learning via Hessian-free optimization. In Fürnkranz, J. and Joachims, T. (eds.), Proceedings
+of the 27th International Conference on Machine Learning (ICML10), pp. 735–742, 2010.
+Martens, J. and Sutskever, I. Learning recurrent neural networks with Hessian-free optimization. In Getoor, L.
+and Scheffer, T. (eds.), Proceedings of the 28th International Conference on Machine Learning (ICML11),
+
+11
+
+Under review as a conference paper at ICLR 2016
+
+pp. 1033–1040, 2011.
+Mizutani, E. and Demmel, J. Iterative scaled trust-region learning in Krylov subspaces via Pearlmutter’s implicit sparse Hessian-vector multiply. In Thrun, S., Saul, L. K., and Schölkopf, B. (eds.), Advances in Neural
+Information Processing Systems 16 (NIPS), pp. 209–216. MIT Press, 2003.
+Montavon, G. and Müller, K.-R. Deep Boltzmann machines and the centering trick. In Montavon, G., Orr,
+G. B., and Müller, K.-R. (eds.), Neural Networks: Tricks of the Trade, volume 7700 of Lecture Notes in
+Computer Science, pp. 621–637. Springer, 2012.
+Nair, V. and Hinton, G. E. Rectified linear units improve restricted Boltzmann machines. In Fürnkranz, J. and
+Joachims, T. (eds.), Proceedings of the 27th International Conference on Machine Learning (ICML10), pp.
+807–814, 2010.
+Olivier, Y. Riemannian metrics for neural networks i: feedforward networks. CoRR, abs/1303.0818, 2013.
+URL http://arxiv.org/abs/1303.0818.
+Park, H., Amari, S.-I., and Fukumizu, K. Adaptive natural gradient learning algorithms for various stochastic
+models. Neural Networks, 13(7):755–764, 2000.
+Pascanu, R. and Bengio, Y. Revisiting natural gradient for deep networks. In International Conference on Learning Representations 2014, 2014. URL http://arxiv.org/abs/1301.3584.
+arXiv:1301.3584.
+Peters, L., Vijayakumar, S., and Schaal, S. Natural actor-critic. In Proceedings of the Sixteenth European
+Conference on Machine Learning, pp. 280–291, 2005.
+Raiko, T., Valpola, H., and LeCun, Y. Deep learning made easier by linear transformations in perceptrons. In
+Lawrence, N. D. and Girolami, M. A. (eds.), Proceedings of the 15th International Conference on Artificial
+Intelligence and Statistics (AISTATS12), volume 22, pp. 924–932, 2012.
+Schraudolph, N. N. Centering neural network gradient factor. In Orr, G. B. and Müller, K.-R. (eds.), Neural
+Networks: Tricks of the Trade, volume 1524 of Lecture Notes in Computer Science, pp. 207–226. Springer,
+1998.
+Springenberg, Jost Tobias, Dosovitskiy, Alexey, Brox, Thomas, and Riedmiller, Martin A. Striving for simplicity: The all convolutional net. CoRR, abs/1412.6806, 2014. URL http://arxiv.org/abs/1412.
+6806.
+Srivastava, Rupesh Kumar, Greff, Klaus, and Schmidhuber, Jürgen. Training very deep networks. CoRR,
+abs/1507.06228, 2015. URL http://arxiv.org/abs/1507.06228.
+Sun, Y., Wierstra, D., Schaul, T., and Schmidhuber, J. Stochastic search using the natural gradient. In Proceedings of the 26th Annual International Conference on Machine Learning (ICML09, pp. 1161–1168, 2009.
+Unterthiner, T., Mayr, A., Klambauer, G., Steijaert, M., Wegner, J. K., Ceulemans, H., and Hochreiter, S. Deep
+learning as an opportunity in virtual screening. In Advances in Neural Information Processing Systems 27
+(NIPS 2014), Workshop on Deep Learning and Representation Learning. Inst. of Bioinformatics, 2014. URL
+www.bioinf.jku.at/publications/2014/NIPS2014a.pdf.
+Unterthiner, T., Mayr, A., Klambauer, G., and Hochreiter, S. Toxicity prediction using deep learning. CoRR,
+abs/1503.01445, 2015. URL http://arxiv.org/abs/1503.01445.
+Vinyals, O. and Povey, D. Krylov subspace descent for deep learning. In AISTATS, 2012. URL http:
+//arxiv.org/pdf/1111.4259v1. arXiv:1111.4259.
+Wierstra, D., Schaul, T., Glasmachers, T., Sun, Y., Peters, J., and Schmidhuber, J. Natural evolution strategies.
+Journal of Machine Learning Research, 15:949–980, 2014.
+Xu, B., Wang, N., Chen, T., and Li, M. Empirical evaluation of rectified activations in convolutional network.
+CoRR, abs/1505.00853, 2015. URL http://arxiv.org/abs/1505.00853.
+Yang, H. H. and Amari, S.-I. Complexity issues in natural gradient descent method for training multilayer
+perceptrons. Neural Computation, 10(8), 1998.
+Zeiler, M. D., Ranzato, M., Monga, R., Mao, M., Yang, K., Le, Q. V., Nguyen, P., Senior, A., Vanhoucke, V.,
+Dean, J., and Hinton, G. E. On rectified linear units for speech processing. In 38th International Conference
+on Acoustics, Speech and Signal Processing (ICASSP), pp. 3517–3521. IEEE, 2013.
+Zhang, L., Amari, S.-I., and Cichocki, A. Natural gradient approach to blind separation of over- and undercomplete mixtures. In Proc. First International Conference on Independent Component Analysis and Blind
+Source Separation ICA99, pp. 455–460, 1999.
+
+A
+
+I NVERSE OF B LOCK M ATRICES
+
+Lemma 1. The positive definite matrix M is in block format with matrix A, vector b, and scalar c. The inverse
+of M is
+
+−1
+
+
+A b
+K u
+M −1 =
+=
+,
+(18)
+T
+T
+b
+c
+u
+s
+
+12
+
+Under review as a conference paper at ICLR 2016
+
+where
+K = A−1 + u s−1 uT
+
+(19)
+
+−1
+
+u = −sA b
+
+−1
+s = c − bT A−1 b
+.
+Proof. For block matrices the inverse is
+
+
+A
+BT
+
+B
+C
+
+−1
+
+
+=
+
+K
+UT
+
+U
+S
+
+(20)
+(21)
+
+
+,
+
+(22)
+
+where the matrices on the right hand side are:
+
+−1
+K = A−1 + A−1 B C − B T A−1 B
+B T A−1
+
+−1
+U = − A−1 B C − B T A−1 B
+
+−1
+U T = − C − B T A−1 B
+B T A−1
+
+−1
+S = C − B T A−1 B
+.
+
+(23)
+(24)
+(25)
+(26)
+
+Further if follows that
+K = A−1 + U S −1 U T .
+We now use this formula for B = b being a vector and C = c a scalar. We obtain
+
+−1
+
+
+A b
+K u
+=
+,
+bT c
+uT s
+where the right hand side matrices, vectors, and the scalar s are:
+
+−1
+K = A−1 + A−1 b c − bT A−1 b
+bT A−1
+
+−1
+u = − A−1 b c − bT A−1 b
+
+−1
+uT = − c − bT A−1 b
+bT A−1
+
+−1
+s = c − bT A−1 b
+.
+
+(27)
+
+(28)
+
+(29)
+(30)
+(31)
+(32)
+
+Again it follows that
+K = A−1 + u s−1 uT .
+
+(33)
+
+A reformulation using u gives
+K = A−1 + u s−1 uT
+u = − s A−1 b
+uT = − s bT A−1
+
+−1
+s = c − bT A−1 b
+.
+
+B
+
+(34)
+(35)
+(36)
+(37)
+
+Q UADRATIC F ORM OF M EAN AND I NVERSE S ECOND M OMENT
+
+Lemma 2. For a random variable a holds
+E(a)T E−1 (a aT ) E(a) ≤ 1
+
+(38)
+
+and
+
+
+1 − E(a)T E−1 (a aT ) E(a)
+
+−1
+
+13
+
+= 1 + E(a)T Var−1 (a) E(a) .
+
+(39)
+
+Under review as a conference paper at ICLR 2016
+
+Proof. The Sherman-Morrison Theorem states
+
+−1
+A−1 b cT A−1
+A + b cT
+= A−1 −
+.
+1 + cT A−1 b
+
+(40)
+
+Therefore we have
+
+−1
+cT A−1 b cT A−1 b
+cT A + b cT
+b = cT A−1 b −
+1 + cT A−1 b
+
+2
+T
+−1
+T
+−1
+T
+−1
+c A b 1 + c A b − c A b
+=
+1 + cT A−1 b
+cT A−1 b
+=
+.
+1 + cT A−1 b
+
+(41)
+
+Using the identity
+E(a aT ) = Var(a) + E(a) E(a)T
+
+(42)
+
+for the second moment and previous formula, we get
+
+−1
+E(a)T E−1 (a aT ) E(a) = E(a)T Var(a) + E(a) E(a)T
+E(a)
+T
+
+=
+
+(43)
+
+−1
+
+E(a) Var (a) E(a)
+≤ 1.
+1 + E(a)T Var−1 (a) E(a)
+
+The last inequality follows from the fact that Var(a) is positive definite.
+We obtain further
+
+
+1 − E(a)T E−1 (a aT ) E(a)
+
+−1
+
+14
+
+= 1 + E(a)T Var−1 (a) E(a) .
+
+(44)
+
+
